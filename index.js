@@ -102,6 +102,21 @@ app.get('/films-count-by-category', async (req, res) => {
 });
 
 
+app.put('/actors/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { first_name, last_name } = req.body; 
+        const connection = await pool.getConnection();
+        await connection.execute('UPDATE actor SET first_name = ?, last_name = ? WHERE actor_id = ?', [first_name, last_name, id]);
+        connection.release();
+        res.status(200).send(`Actor with ID ${id} updated successfully.`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
