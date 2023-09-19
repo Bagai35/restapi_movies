@@ -1,7 +1,8 @@
 const express = require('express');
 const app = express();
 const pool = require("./config"); // Импортируйте pool из вашего конфигурационного файла
-
+const { getLanguageId } = require('./languageUtils');
+const { getActorId } = require('./actorUtils');
 const port = 8000;
 
 app.get('/categories', (req, res) => {
@@ -11,8 +12,6 @@ app.get('/categories', (req, res) => {
     })
 })
 
-
-// Создаем подключение к базе данных
 
 
 app.use(express.json());
@@ -99,6 +98,66 @@ app.get('/films-count-by-category', async (req, res) => {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
+});
+
+// Изменение актёра по идешнику
+app.put('/actors/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { first_name, last_name } = req.body; 
+        const connection = await pool.getConnection();
+        await connection.execute('UPDATE actor SET first_name = ?, last_name = ? WHERE actor_id = ?', [first_name, last_name, id]);
+        connection.release();
+        res.status(200).send(`Actor with ID ${id} updated successfully.`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Удаление актёра по идешнику
+app.delete('/actors/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const connection = await pool.getConnection();
+        await connection.execute('DELETE FROM actor WHERE actor_id = ?', [id]);
+        connection.release();
+        res.status(200).send(`Actor with ID ${id} deleted successfully.`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.use(express.json());
+
+app.post('/film', async (req, res) => {
+  try {
+    const {
+      title,
+      language_name, 
+      rental_duration,
+      rental_rate,
+      replacement_cost,
+      rating,
+      last_update,
+      actor_first_name, 
+      actor_last_name, 
+    } = req.body;
+
+    const languageId = await getLanguageId(language_name);
+    const actorId = await getActorId(actor_first_name, actor_last_name);
+
+    const [insertResult] = await pool.execute(
+      'INSERT INTO film (title, language_id, rental_duration, rental_rate, replacement_cost, rating, last_update, actor_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, languageId, rental_duration, rental_rate, replacement_cost, rating, last_update, actorId]
+    );
+
+    res.status(201).send(`Film with ID ${insertResult.insertId} created successfully.`);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 
